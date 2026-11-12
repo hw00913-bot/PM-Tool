@@ -131,6 +131,24 @@ class NextActionsTests(unittest.TestCase):
         self.assertTrue(any(action.get("checks") for action in matching))
         self.assertFalse(any("--stopped" in action.get("argv", []) for action in matching))
 
+    def test_takeover_shows_registered_manual_worker(self):
+        self.task("A")
+        attempt = self.reserve("A")
+        dispatch.start(self.store, "R", 1, attempt["id"], "worker-a", host_ref="manual-host-7")
+        epoch = self.store.take_over("R", 1)["epoch"]
+
+        before = self.store.path.read_bytes()
+        view = self.status()
+        self.assertEqual(view["epoch"], epoch)
+        action = next(item for item in view["next_actions"] if item["kind"] == "check-worker")
+        self.assertEqual(action["attempt_id"], attempt["id"])
+        self.assertEqual(action["workspace"], attempt["workspace"])
+        self.assertEqual(action["operation_id"], attempt["operation_id"])
+        self.assertEqual(action["host_ref"], "manual-host-7")
+        self.assertEqual(action["worker"], "worker-a")
+        self.assertNotIn("argv", action)
+        self.assertEqual(self.store.path.read_bytes(), before)
+
     def test_takeover_points_to_the_original_running_codex_turn(self):
         self.task("A")
         attempt = self.reserve("A")

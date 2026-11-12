@@ -250,3 +250,37 @@ class AcceptanceEvidenceTests(unittest.TestCase):
             self._finalize(approval="new basis")
         self.assertEqual(self.store.operation(self.run, original["id"]), original)
         self.assertIsNone(self._finalize()["approval"])
+
+    def test_pending_marker_cannot_start_human_acceptance(self):
+        self._land()
+        self._report("first")
+        for marker in ("待确认", "  TBD  ", "未确认"):
+            with self.subTest(marker=marker), self.assertRaisesRegex(ValueError, "请登记已确认的依据"):
+                self._finalize(approval=marker)
+        self.assertFalse(any(item["kind"] == "acceptance" for item in self.store.operations(self.run)))
+        self.assertEqual(self._finalize(approval="人工验收记录")["approval"], "人工验收记录")
+
+    def test_legacy_pending_marker_requires_cancel_and_reapproval(self):
+        self._land()
+        self._report("first")
+        with (
+            patch.object(delivery, "_require_human_approval"),
+            patch.object(delivery, "_write_memory", side_effect=RuntimeError("interrupted")),
+            self.assertRaisesRegex(RuntimeError, "interrupted"),
+        ):
+            self._finalize(approval="待确认")
+        original = next(item for item in self.store.operations(self.run) if item["kind"] == "acceptance")
+        for approval in (None, "人工验收记录"):
+            with self.subTest(approval=approval), self.assertRaisesRegex(ValueError, "cancel-acceptance"):
+                self._finalize(approval=approval)
+        self.assertEqual(self.store.operation(self.run, original["id"]), original)
+        delivery.cancel_acceptance(self.store, self.run, self.epoch, self.landed["operation_id"], "reopen review")
+        self.assertEqual(self._finalize(approval="人工验收记录")["approval"], "人工验收记录")
+
+    def test_completed_legacy_approval_still_replays(self):
+        self._land()
+        self._report("first")
+        with patch.object(delivery, "_require_human_approval"):
+            original = self._finalize(approval="待确认")
+        self.assertEqual(self._finalize(), original)
+        self.assertEqual(self._finalize(approval="待确认"), original)

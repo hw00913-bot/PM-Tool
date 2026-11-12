@@ -28,7 +28,7 @@ python3 -m loop --help
 python3 -m unittest discover -s tests -v
 ```
 
-浏览器验证使用 [运行手册](docs/runbook.md#浏览器验证合入和交付) 的环境配置。
+运行浏览器验证和下列测试前，按[运行手册](docs/runbook.md#浏览器验证合入和交付)安装锁定的 Playwright 并配置浏览器。
 
 ```sh
 RTL_TEST_BROWSER=1 python3 -m unittest discover -s tests -v

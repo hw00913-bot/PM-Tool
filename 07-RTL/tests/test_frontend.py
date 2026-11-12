@@ -125,6 +125,17 @@ class FrontendTests(unittest.TestCase):
         self.assertFalse((self.repo / "dist").exists())
         self.assertEqual((self.repo / "view.js").read_text(), "uncommitted edit")
 
+    def test_install_and_build_do_not_inherit_host_node_path(self):
+        def npm(command, directory, env, timeout):
+            self.assertNotIn("NODE_PATH", env)
+            self._npm(command, directory, env, timeout)
+
+        with patch.dict(os.environ, {"NODE_PATH": "/host/modules"}):
+            with patch.object(frontend, "_run_npm", side_effect=npm) as runner:
+                frontend.build(self.store, self.run_id, self.commit)
+            self.assertEqual(os.environ["NODE_PATH"], "/host/modules")
+        self.assertEqual([call.args[0] for call in runner.call_args_list], [frontend.INSTALL, frontend.BUILD])
+
     def test_reuses_dependencies_and_rebuilds_changed_source(self):
         successor = self._commit("view.js", "changed view")
         with patch.object(frontend, "_run_npm", side_effect=self._npm) as runner:

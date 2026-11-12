@@ -1,13 +1,12 @@
 """Publish the project requirements ledger and per-delivery feature links."""
 
-from contextlib import closing
 import hashlib
 import json
 from pathlib import Path
 import re
 import sqlite3
 
-from .ledger_schema import require_readable
+from .ledger_schema import readonly_connection, require_readable
 from .requirements import CHANGE_LABELS, _cell, feature_anchor, render_plan
 from .state import pack, safe_id, unpack
 
@@ -182,6 +181,8 @@ def _known_ledger_history(project):
 
 
 def _origin(db):
+    if path := getattr(db, "ledger_path", None):
+        return path
     return next((row[2] for row in db.execute("PRAGMA database_list") if row[1] == "main"), "")
 
 
@@ -236,7 +237,7 @@ def _check_external_receipt(record):
     try:
         if not origin.is_absolute() or origin.name != "state.sqlite" or origin.resolve() != origin or not origin.is_file():
             raise ValueError("原运行台账不可用")
-        with closing(sqlite3.connect(origin.as_uri() + "?mode=ro", uri=True, timeout=5)) as db:
+        with readonly_connection(origin, timeout=5) as db:
             db.row_factory = sqlite3.Row
             db.execute("BEGIN")
             require_readable(db)

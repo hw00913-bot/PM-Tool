@@ -32,8 +32,14 @@ def _operations_by_attempt(snapshot, kind):
 
 def _host_check(snapshot, prefix, attempt, bindings, *, stopping=False):
     refs = _attempt_refs(attempt)
-    if attempt.get("host_ref"):
-        refs["host_ref"] = attempt["host_ref"]
+    host_ref = attempt.get("host_ref")
+    if not host_ref and (operation_id := attempt.get("operation_id")):
+        dispatch = next((op for op in snapshot["operations"] if op["id"] == operation_id), None)
+        host_ref = ((dispatch or {}).get("receipt") or {}).get("host_ref")
+    if host_ref:
+        refs["host_ref"] = host_ref
+    if attempt.get("worker"):
+        refs["worker"] = attempt["worker"]
     if attempt.get("workspace"):
         refs["workspace"] = attempt["workspace"]
     if attempt["id"] in bindings:
@@ -64,6 +70,8 @@ def _host_check(snapshot, prefix, attempt, bindings, *, stopping=False):
     checks = ["在原宿主核对该尝试、执行者、宿主引用和工作区。"]
     if stopping:
         checks.append("取得实际停工或隔离证据后，再登记暂停。")
+    elif attempt["state"] == "running":
+        checks.append("核对已登记的启动回执和原进程当前状态，再决定如何续接或收件。")
     else:
         checks.append("确认原执行是否已启动。取得原执行者和真实宿主回执后，再补登记或准备原尝试。")
     return _action(
@@ -266,7 +274,7 @@ def recovery_actions(snapshot, prefix):
                 actions.append(_isolation_retry(snapshot, prefix, attempt, isolations[attempt["id"]]))
             elif attempt["state"] == "paused":
                 actions.append(_resume_attempt(snapshot, prefix, task, attempt, bindings, operations, current, replacements))
-            elif attempt["state"] == "running" and attempt["id"] in bindings:
+            elif attempt["state"] == "running":
                 actions.append(_host_check(snapshot, prefix, attempt, bindings))
             elif attempt["state"] == "reserved":
                 if attempt.get("workspace") or attempt["id"] in bindings:

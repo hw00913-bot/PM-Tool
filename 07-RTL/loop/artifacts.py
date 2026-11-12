@@ -475,6 +475,7 @@ def promote(store, run_id, epoch, operation_id):
     from .delivery import require_complete_landing
     from .dispatch import ensure_current_inputs, require_bound_requirements
     from .lifecycle import require_no_integration_rollback
+    from .suite_catalog import integration_case_suites
     from .verification import integration_retests, require_cases
 
     repo = repo_path(store, run_id)
@@ -526,12 +527,20 @@ def promote(store, run_id, epoch, operation_id):
         required_cases.update(case for item in risky for case in item["input"]["spec"].get("cases", []))
         task_ids = {entry["task_id"] for entry in submissions}
         retests, proof_ids = integration_retests(db, run, task_ids, operation_id)
+        authors = attempt_authors(db, payload["attempt_ids"])
         require_cases(
             db, run_id, "integration", candidate, required_cases,
-            context_filter=context, excluded_actors=attempt_authors(db, payload["attempt_ids"]),
+            context_filter=context, excluded_actors=authors,
             require_any=bool(risky or required_cases), baseline=run["baseline"],
             reject_failures=True, retests=retests,
         )
+        # Require checkpoint-bearing passes without dropping failures from other approved suites.
+        case_suites = integration_case_suites(run["baseline"], (item["input"]["spec"] for item in risky))
+        if case_suites:
+            require_cases(
+                db, run_id, "integration", candidate, case_suites.keys(),
+                context_filter=context, excluded_actors=authors, baseline=run["baseline"], case_suites=case_suites,
+            )
         proof_ids.update(check_pairs(db, run_id, {**payload, **context}))
         if actual == parent and candidate != parent:
             git(repo, "update-ref", CANDIDATE_REF, candidate, parent)

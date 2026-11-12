@@ -19,6 +19,7 @@ from .payload_types import (
     AcceptanceContext, AcceptanceInputs, AcceptanceIntent, AcceptanceReceipt, Baseline, BuildReceipt,
     DeliveryReceipt, LandingIntent, LandingReceipt, OperationRecord, RunRecord,
 )
+from .s1_review import PENDING_MARKERS
 from .state import begin_operation, finish_operation, get_operation, get_run, guard, pack, unpack
 from .verification import evidence_intact, inputs_match, require_cases
 
@@ -746,6 +747,19 @@ def _check_approval_basis(approval: str | None, receipt: AcceptanceReceipt, *, p
     raise ValueError(message)
 
 
+def confirmed_human_approval(basis):
+    return isinstance(basis, str) and bool(basis.strip()) and basis.strip().casefold() not in PENDING_MARKERS
+
+
+def _require_human_approval(approval, existing):
+    basis = existing["payload"]["receipt"].get("approval") if existing else approval
+    if confirmed_human_approval(basis):
+        return
+    if existing:
+        raise ValueError("原验收意图缺少已确认的人工验收依据，请核对回写状态并用 cancel-acceptance 撤销后重新登记")
+    raise ValueError("本轮要求人工验收，请登记已确认的依据")
+
+
 def _acceptance_intent(store, run_id, epoch, operation_id, actor, approval) -> OperationRecord:
     from .requirements_history import check_ledger_destination
     from .requirements_run import require_prepared
@@ -776,10 +790,10 @@ def _acceptance_intent(store, run_id, epoch, operation_id, actor, approval) -> O
         baseline = run["baseline"]
         latest = _latest_acceptance(db, run_id, operation_id)
         existing = latest if latest and latest["status"] == "intent" else None
+        if baseline.get("human_acceptance"):
+            _require_human_approval(approval, existing)
         if existing:
             _check_approval_basis(approval, existing["payload"]["receipt"], pending=True)
-        if baseline.get("human_acceptance") and not (approval or existing):
-            raise ValueError("本轮要求人工验收，请登记已确认的依据")
         context_filter, evidence_ids = _delivery_context(
             db, run, candidate, operation_id, entry, delivery_authors(db, run_id), payload["manifest"],
             existing["payload"]["context"] if existing else None,

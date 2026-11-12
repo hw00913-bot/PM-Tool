@@ -5,7 +5,7 @@ import hashlib
 from pathlib import Path
 import sqlite3
 
-from .ledger_schema import project_rebind_rows, require_readable
+from .ledger_schema import project_rebind_rows, readonly_connection, require_readable
 from .requirements_history import _frozen_baseline, _history, _origin, _trace_fields, _trace_record
 from .state import LoopError, get_operation, get_run, pack, safe_id
 
@@ -20,14 +20,11 @@ def read_ledger(path):
     if not ledger.is_absolute() or ledger.name != "state.sqlite" or ledger.resolve() != ledger or not ledger.is_file():
         raise ValueError(f"原运行台账不可用，请先恢复：{ledger}")
     try:
-        db = sqlite3.connect(ledger.as_uri() + "?mode=ro", uri=True, timeout=5)
-        try:
+        with readonly_connection(ledger, timeout=5) as db:
             db.row_factory = sqlite3.Row
             db.execute("BEGIN")
             require_readable(db)
             yield db
-        finally:
-            db.close()
     except sqlite3.Error as error:
         raise ValueError(f"无法读取原运行台账：{ledger}") from error
 

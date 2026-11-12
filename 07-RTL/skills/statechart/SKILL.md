@@ -16,18 +16,20 @@ description: "用 TLA+、TLC 和 Mermaid 专项核对 RTL 的并行派发、接�
 
 ## 运行与解释结果
 
-使用本机 Pstack 的可执行工具。从 RTL 工具根目录执行下列示例。将 `AUDIT_DIR` 指向隔离工作目录。Pstack 安装在其他位置时，将 `RTL_STATECHART_TOOL` 指向本地 `skills/statechart/scripts/statechart` 可执行文件的绝对路径。
+从 RTL 工具根目录调用[内置 Statechart 执行器](../../tools/statechart/README.md)。将 `AUDIT_DIR` 指向隔离工作目录。如需使用另一份兼容的执行器，将 `RTL_STATECHART_TOOL` 设为其可执行文件的绝对路径。
+
+运行前将 `TLA2TOOLS` 导出为本机 `tla2tools.jar` 的绝对路径。Java 默认取 `PATH` 中的 `java`。用 `JAVA` 指定命令名时从 `PATH` 查找，指定相对文件路径时从执行器的调用目录解析。
 
 ```sh
 RTL_ROOT="$(pwd -P)"
-STATECHART_TOOL="${RTL_STATECHART_TOOL:-$RTL_ROOT/../08-pstack/skills/statechart/scripts/statechart}"
+STATECHART_TOOL="${RTL_STATECHART_TOOL:-$RTL_ROOT/tools/statechart/statechart}"
 (
   cd "$AUDIT_DIR" &&
   "$STATECHART_TOOL" Audit.tla --config Audit.cfg --out result
 )
 ```
 
-工具需要支持 TypeScript 的运行时及 Java/TLC。已有本地工具时，用环境变量 `TLA2TOOLS` 指定 `tla2tools.jar` 的绝对路径，按需用 `JAVA` 指定 Java。未指定 JAR 时，Pstack 通过 mise 获取依赖，首次安装需要网络。每次使用新的或空的输出目录。需要为状态和动作命名时，可加 `--view view.mjs`，按状态区分别标记台账、宿主和工作区，保留反例上影响判断的转移。
+执行器支持 Node.js 22.x（至少 22.18）或 23.6+，也支持 Bun 1.1.5+ 或 Deno 2.0+。每次选择路径各级均为普通目录的新建或空输出目录。需要为状态和动作命名时，可用 `--view view.mjs` 加载可信的本地 JavaScript 模块，按状态区分别标记台账、宿主和工作区，保留反例上影响判断的转移。执行器先检查本机 Java 和 TLC JAR 配置，再执行视图模块。
 
 读取 `report.md` 与 `tlc.out`，有图时使用 `chart.mmd`，按需查阅 `tlc-RULE.out`。工具退出码 `1` 且有报告时读取反例。记录状态数、模型范围和报告列出的未检查项。检查中断、依赖缺失或工具错误时登记阻塞。检查通过时写明覆盖的模型范围与已核对的规则。图超出工具预算时，用报告中的反例路径交接。
 
@@ -39,4 +41,4 @@ STATECHART_TOOL="${RTL_STATECHART_TOOL:-$RTL_ROOT/../08-pstack/skills/statechart
 
 ## 本地来源
 
-基于本地同级 `08-pstack` 的 `skills/statechart/SKILL.md`、`skills/statechart/scripts/statechart` 和 `skills/statechart/scripts/run.ts`。已核对 `08-pstack/plugin.json` 中的 Pstack 版本 `0.15.36`、作者 Lauren Tan 和 MIT 许可。
+建模与复现方法参考 Pstack `0.15.36` 的 Statechart Skill。执行器的来源、RTL 调整与原 MIT 许可随执行器一并保存。 [执行器来源](../../tools/statechart/README.md)

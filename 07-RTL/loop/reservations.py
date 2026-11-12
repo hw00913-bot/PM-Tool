@@ -9,7 +9,7 @@ import stat
 import sys
 from contextlib import closing, contextmanager
 
-from .ledger_schema import LedgerSchemaError, require_readable
+from .ledger_schema import LedgerSchemaError, readonly_connection, require_readable
 from .state import LoopError, overlaps
 
 
@@ -73,7 +73,7 @@ class _Reservations:
         try:
             if _identity(ledger) != (row["device"], row["inode"]):
                 raise OSError("ledger identity changed")
-            with closing(sqlite3.connect(ledger.as_uri() + "?mode=ro", uri=True, timeout=5)) as db:
+            with readonly_connection(ledger, timeout=5) as db:
                 db.row_factory = sqlite3.Row
                 db.execute("BEGIN")
                 require_readable(db)

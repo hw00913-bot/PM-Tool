@@ -1,0 +1,7 @@
+{
+  "name": "rtl-browser-verification",
+  "private": true,
+  "dependencies": {
+    "playwright": "1.61.0-alpha-1781023400000"
+  }
+}

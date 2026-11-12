@@ -165,6 +165,23 @@ class LedgerReservationTests(unittest.TestCase):
         with self.assertRaisesRegex(LoopError, "reserved by active run legacy"):
             self.start(self.two, project_id="P")
 
+    def test_conflicting_legacy_ledger_is_rejected_before_migration(self):
+        self.start(self.one, project_id="P", run_id="owner")
+        owner = self.one.path.read_bytes()
+        copy = self.root / "copied"
+        copy.mkdir()
+        ledger = copy / "state.sqlite"
+        ledger.write_bytes(owner)
+        with sqlite3.connect(ledger) as db:
+            db.execute("PRAGMA user_version=0")
+            db.execute("DROP TABLE project_rebinds")
+        before = ledger.read_bytes()
+
+        with self.assertRaisesRegex(LoopError, "reserved by active run owner"):
+            self.store("copied")
+        self.assertEqual(ledger.read_bytes(), before)
+        self.assertEqual(self.one.path.read_bytes(), owner)
+
     def test_rebind_checks_conflicts_and_transfers_active_scope(self):
         old = self.start(self.one, project_id="P")
         occupied = self.root / "other-project"

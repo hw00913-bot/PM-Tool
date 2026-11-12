@@ -3,11 +3,71 @@
 Schema upgrades leave operation, evidence and baseline JSON as originally stored.
 """
 
+from contextlib import closing, contextmanager
+from pathlib import Path
 import re
+import shutil
+import sqlite3
+import tempfile
 
 
 class LedgerSchemaError(ValueError):
     """The SQLite file does not have a supported RTL ledger layout."""
+
+
+class _LedgerReadConnection(sqlite3.Connection):
+    """Keep ledger identity separate from the path used for a private read."""
+
+
+def _file_stamp(path):
+    try:
+        info = path.stat()
+    except FileNotFoundError:
+        return None
+    return info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns
+
+
+@contextmanager
+def _readonly_path(path):
+    with path.open("rb") as stream:
+        header = stream.read(20)
+    # SQLite file header write/read versions are both 2 for a WAL ledger.
+    if header[:16] != b"SQLite format 3\x00" or header[18:20] != b"\x02\x02":
+        yield path
+        return
+
+    wal = path.with_name(path.name + "-wal")
+    with tempfile.TemporaryDirectory(prefix="rtl-wal-read-") as folder:
+        snapshot = Path(folder) / path.name
+        snapshot_wal = snapshot.with_name(wal.name)
+        for _ in range(3):
+            before = (_file_stamp(path), _file_stamp(wal))
+            try:
+                shutil.copyfile(path, snapshot)
+                if before[1] is None:
+                    snapshot_wal.unlink(missing_ok=True)
+                else:
+                    shutil.copyfile(wal, snapshot_wal)
+            except FileNotFoundError:
+                continue
+            if before == (_file_stamp(path), _file_stamp(wal)):
+                # SQLite can rebuild its WAL index here without touching the source.
+                yield snapshot
+                return
+        raise LedgerSchemaError("RTL WAL 台账读取期间发生变化，请重试")
+
+
+@contextmanager
+def readonly_connection(path, *, timeout=15):
+    """Open a read-only ledger without creating WAL sidecars at its original path."""
+    path = Path(path)
+    with _readonly_path(path) as source:
+        with closing(sqlite3.connect(
+            source.as_uri() + "?mode=ro", uri=True, timeout=timeout, isolation_level=None,
+            factory=_LedgerReadConnection,
+        )) as db:
+            db.ledger_path = str(path)
+            yield db
 
 
 _VERSION_1 = (

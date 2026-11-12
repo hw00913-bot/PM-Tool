@@ -99,3 +99,29 @@ class SuiteCatalogTests(unittest.TestCase):
             suite_catalog.freeze(self.baseline, [left, right])
         complete, _ = self.suite("complete", steps=[RELOAD, RESULT, heading])
         suite_catalog.freeze(self.baseline, [left, right, complete])
+
+    def test_integration_suites_cover_checkpoints_for_all_selected_risk_tasks(self):
+        heading = {"op": "visible", "selector": "#heading"}
+        other = {
+            "id": "FUNC-B", "status": "active",
+            "assertions": [{"case": CASE, "step": heading, "checkpoint": {"index": 2, "after": [RELOAD]}}],
+        }
+        features = self.baseline["requirements"]["features"]
+        first_feature = features[0]["id"]
+        features.append(other)
+        left, left_digest = self.suite("left")
+        right, _ = self.suite("right", steps=[RELOAD, {**RESULT, "value": "standard"}, heading])
+        complete, complete_digest = self.suite("complete", steps=[RELOAD, RESULT, heading])
+        self.baseline["suite_catalog"] = suite_catalog.freeze(self.baseline, [left, right, complete])
+        first = {"feature_ids": [first_feature], "cases": [CASE]}
+        second = {"feature_ids": ["FUNC-B"], "cases": [CASE]}
+        self.assertEqual(
+            suite_catalog.integration_case_suites(self.baseline, [first]),
+            {CASE: {left_digest, complete_digest}},
+        )
+        self.assertEqual(
+            suite_catalog.integration_case_suites(self.baseline, [first, second]),
+            {CASE: {complete_digest}},
+        )
+        self.baseline.pop("suite_catalog")
+        self.assertIsNone(suite_catalog.integration_case_suites(self.baseline, [first, second]))

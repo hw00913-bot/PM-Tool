@@ -117,8 +117,9 @@ python3 -m loop --data "$RTL_DATA_DIR" init --project "$PROTOTYPE_PROJECT" \
 | 基础运行 | Python 3.11+，以及支持 POSIX 文件锁的环境，如 macOS 或 Linux。Git 用于克隆仓库和 RTL 隔离工作区。 |
 | 04 冻结包交接核验 | 与 04 版本协议兼容的本地 02 工具。RTL 用 `RTL_ANALYSIS_VERIFIER_ROOT` 定位其核验器。 |
 | RTL 默认 React 构建 | Node.js 22.12+，或 20.19+ 的 20.x，以及 npm。RTL 按锁文件在隔离目录安装和构建。交付的 `index.html` 可直接用浏览器打开。 |
-| RTL 浏览器验收 | Node.js、Playwright 和验收浏览器，默认 Chromium。按需用 `RTL_PLAYWRIGHT_MODULE` 指向已安装的模块，用 `RTL_BROWSER_EXECUTABLE` 指向本机浏览器。 [浏览器运行手册](07-RTL/docs/runbook.md#浏览器验证合入和交付) |
+| RTL 浏览器验收 | Node.js、npm 和验收浏览器，默认 Chromium。从 `07-RTL/` 运行 `npm ci --prefix tools/browser-verification --ignore-scripts` 安装锁定的 Playwright。可用 `RTL_PLAYWRIGHT_MODULE` 覆盖模块，用 `RTL_BROWSER_EXECUTABLE` 指向本机浏览器。 [浏览器运行手册](07-RTL/docs/runbook.md#浏览器验证合入和交付) |
 | RTL 自动派发 Codex | 已登录的本机 Codex App Server。默认本地宿主可用 `codex app-server daemon start` 启动。 [派发与接管](07-RTL/docs/runbook.md#通过-codex-执行场景) |
 | 04 可选业务流程与泳道 HTML | 本地 PlantUML 命令，或 PlantUML JAR 加 Java。时序和页面结构使用原生 SVG。 [PlantUML 配置](04_requirement-analysis/requirement-analysis-loop/references/plantuml-rendering.md) |
 | 04 可选 Mermaid 候选图 | Node.js 20+、npm、Playwright 和本地浏览器，按工具的锁文件安装候选渲染依赖。 [Mermaid 配置](04_requirement-analysis/requirement-analysis-loop/references/mermaid-candidate.md) |
-| 04／07 可选 Statechart 检查 | 本地 Pstack 执行器、TypeScript 运行时、Java 和 TLC。分别用 `RAL_STATECHART_TOOL` 或 `RTL_STATECHART_TOOL` 指向执行器，`TLA2TOOLS` 可指定已有的 TLC JAR。 [04 Statechart](04_requirement-analysis/requirement-analysis-loop/skills/statechart/SKILL.md) · [07 Statechart](07-RTL/skills/statechart/SKILL.md) |
+| 04 可选 Statechart 检查 | 本机 Pstack 执行器、TypeScript 运行时及 Java/TLC。按需用 `RAL_STATECHART_TOOL` 指定执行器，用 `TLA2TOOLS` 指定已有的 TLC JAR。 [04 Statechart](04_requirement-analysis/requirement-analysis-loop/skills/statechart/SKILL.md) |
+| 07 可选 Statechart 检查 | 执行器随 07 提供。准备兼容的 TypeScript 运行时及本机 Java/TLC，将 `TLA2TOOLS` 指向已有的 JAR。可用 `JAVA` 指定 Java，并用 `RTL_STATECHART_TOOL` 覆盖执行器路径。 [07 Statechart](07-RTL/skills/statechart/SKILL.md) |

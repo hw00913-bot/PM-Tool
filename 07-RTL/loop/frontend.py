@@ -199,6 +199,7 @@ def build(store, run_id, commit, *, epoch=None):
     destination.parent.mkdir(parents=True, exist_ok=True)
     env = os.environ.copy()
     env.pop("NODE_ENV", None)
+    env.pop("NODE_PATH", None)
     env.setdefault("npm_config_cache", env.get("NPM_CONFIG_CACHE", str(Path(store.root) / "npm-cache")))
     with tempfile.TemporaryDirectory(prefix=".build-", dir=destination.parent) as work:
         source = Path(work) / "source"

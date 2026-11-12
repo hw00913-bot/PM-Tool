@@ -14,6 +14,7 @@ from unittest.mock import patch
 
 from loop import artifacts, browser, delivery
 from loop.ledger_schema import CURRENT_VERSION
+from loop.requirements_history import _origin
 from loop.state import Store
 
 
@@ -110,6 +111,42 @@ class LedgerMigrationTests(unittest.TestCase):
         self.assertEqual(self._cli("status", "legacy")["candidate"], self.candidate)
         with self._raw() as db:
             self.assertEqual(db.execute("PRAGMA integrity_check").fetchone()[0], "ok")
+
+    def test_checkpointed_wal_status_works_in_readonly_directory_without_sidecars(self):
+        with closing(sqlite3.connect(self.store.path)) as writer:
+            self.assertEqual(writer.execute("PRAGMA journal_mode=WAL").fetchone()[0], "wal")
+        before = self.store.path.read_bytes()
+        files = set(self.data.iterdir())
+        self.assertNotIn(self.data / "state.sqlite-wal", files)
+        self.assertNotIn(self.data / "state.sqlite-shm", files)
+
+        self.data.chmod(0o555)
+        try:
+            view = self._cli("status", "legacy", "--next")
+        finally:
+            self.data.chmod(0o700)
+        self.assertEqual(view["candidate"], self.candidate)
+        self.assertEqual(set(self.data.iterdir()), files)
+        self.assertEqual(self.store.path.read_bytes(), before)
+
+    def test_status_reads_uncheckpointed_wal_and_retains_original_ledger_identity(self):
+        with closing(sqlite3.connect(self.store.path)) as writer:
+            self.assertEqual(writer.execute("PRAGMA journal_mode=WAL").fetchone()[0], "wal")
+            writer.execute("PRAGMA wal_autocheckpoint=0")
+            writer.execute("BEGIN")
+            self.assertEqual(writer.execute("SELECT epoch FROM runs").fetchone()[0], 1)
+            original = self.store.path.read_bytes()
+            self.assertEqual(self.store.take_over("legacy", 1)["epoch"], 2)
+            wal = self.data / "state.sqlite-wal"
+            shm = self.data / "state.sqlite-shm"
+            before = {path: path.read_bytes() for path in (self.store.path, wal, shm)}
+            self.assertEqual(before[self.store.path], original)
+            self.assertGreater(len(before[wal]), 32)
+
+            self.assertEqual(self._cli("status", "legacy", "--next")["epoch"], 2)
+            with self.store.transaction(immediate=False) as db:
+                self.assertEqual(_origin(db), str(self.store.path))
+            self.assertEqual({path: path.read_bytes() for path in before}, before)
 
     def test_unversioned_complete_ledger_is_read_only_until_first_registration(self):
         self._downgrade(without_rebinds=False)

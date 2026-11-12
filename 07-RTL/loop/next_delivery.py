@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+from .delivery import confirmed_human_approval
 from .evidence_compat import delivery_browsers, delivery_revisions, inputs_match
 from .verification import assess_cases
 
@@ -257,7 +258,10 @@ def delivery_actions(snapshot, prefix):
                 "证据缺失时对同一候选和冻结用例补证；处置有变化时先核对原意图的回写状态。",
             ],
         }
-        if needs_evidence:
+        if snapshot["baseline"].get("human_acceptance") and not confirmed_human_approval(receipt.get("approval")):
+            action["reason"] = "原验收意图缺少已确认的人工验收依据。"
+            action["checks"].insert(0, "先核对原意图的回写状态。尚未回写时用 cancel-acceptance 撤销，再登记已确认的依据。")
+        elif needs_evidence:
             action["checks"].append("先为原候选补齐台账中缺失或失败的验收证据。")
         elif (receipt.get("actor") and receipt.get("operation_id") == operation_id
               and receipt.get("candidate") == candidate and receipt.get("entry") == str(entry)

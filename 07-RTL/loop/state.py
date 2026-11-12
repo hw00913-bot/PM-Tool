@@ -4,7 +4,7 @@ import json
 import re
 import sqlite3
 import unicodedata
-from contextlib import contextmanager
+from contextlib import closing, contextmanager
 from pathlib import Path, PurePosixPath
 from typing import cast
 from uuid import uuid4
@@ -231,6 +231,7 @@ class Store:
         self._check_registry_paths(self.data_root)
         with reservations(self.reservation_root) as registry:
             registry.check(self.path, None, None, ())
+            self._preflight_legacy_reservations(registry)
             self.data_root.mkdir(parents=True, exist_ok=True)
             with self.transaction(create=True):
                 pass
@@ -239,6 +240,21 @@ class Store:
     def _check_registry_paths(self, *paths):
         if any(overlaps(self.reservation_root, path) for path in paths):
             raise LoopError("project, output, and ledger paths must stay outside the RTL reservation directory")
+
+    def _preflight_legacy_reservations(self, registry):
+        if not self.path.is_file() or not self.path.stat().st_size:
+            return
+        with self.transaction(immediate=False) as db:
+            if ledger_schema.require_readable(db) != 0 or not db.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='runs'"
+            ).fetchone():
+                return
+            for run in db.execute(
+                "SELECT id,project_id,project_root,output_path FROM runs WHERE status='active'"
+            ):
+                paths = (run["project_root"], run["output_path"])
+                self._check_registry_paths(*paths)
+                registry.check(self.path, run["id"], run["project_id"], paths)
 
     def _adopt_reservations(self, registry):
         query = RUN_QUERY + " WHERE status = 'active'"
@@ -266,22 +282,25 @@ class Store:
         if not create and not self.path.exists():
             raise LoopError(f"no RTL ledger at {self.data_root}")
         mode = "rwc" if create else ("rw" if immediate else "ro")
-        db = sqlite3.connect(self.path.as_uri() + f"?mode={mode}", uri=True, timeout=15, isolation_level=None)
-        db.row_factory = sqlite3.Row
-        try:
-            db.execute("PRAGMA foreign_keys = ON")
-            db.execute("BEGIN IMMEDIATE" if immediate else "BEGIN")
-            if immediate:
-                ledger_schema.ensure_current(db)
-            else:
-                ledger_schema.require_readable(db)
-            yield db
-            db.commit()
-        except BaseException:
-            db.rollback()
-            raise
-        finally:
-            db.close()
+        connection = (
+            ledger_schema.readonly_connection(self.path) if mode == "ro" else closing(sqlite3.connect(
+                self.path.as_uri() + f"?mode={mode}", uri=True, timeout=15, isolation_level=None,
+            ))
+        )
+        with connection as db:
+            db.row_factory = sqlite3.Row
+            try:
+                db.execute("PRAGMA foreign_keys = ON")
+                db.execute("BEGIN IMMEDIATE" if immediate else "BEGIN")
+                if immediate:
+                    ledger_schema.ensure_current(db)
+                else:
+                    ledger_schema.require_readable(db)
+                yield db
+                db.commit()
+            except BaseException:
+                db.rollback()
+                raise
 
     def create_run(
         self, project_root, output_path, baseline: Baseline, *, project_id=None, run_id=None, source_run=None,

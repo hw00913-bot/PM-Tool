@@ -5,19 +5,50 @@ const { pathToFileURL } = require('node:url');
 const { createRequire } = require('node:module');
 
 const assertionOperations = new Set(['visible', 'hidden', 'text', 'value', 'disabled', 'attribute', 'css']);
+const dependencyDirectory = path.join('tools', 'browser-verification');
+const installDependencies = 'npm ci --prefix tools/browser-verification --ignore-scripts';
 
-function loadPlaywright() {
-  if (process.env.RTL_PLAYWRIGHT_MODULE) return require(process.env.RTL_PLAYWRIGHT_MODULE);
-  try { return require('playwright'); }
-  catch (error) {
-    if (error.code !== 'MODULE_NOT_FOUND') throw error;
-    for (const dir of (process.env.PATH || '').split(path.delimiter)) {
-      const cli = path.join(dir, 'playwright-cli');
-      if (fs.existsSync(cli)) {
-        return createRequire(fs.realpathSync(cli))('playwright');
-      }
+function lockedModuleEntry(dependencyRoot, packages, name) {
+  const packageRoot = path.join(dependencyRoot, 'node_modules', name);
+  const metadataPath = path.join(packageRoot, 'package.json');
+  if (fs.realpathSync(metadataPath) !== metadataPath) {
+    throw new Error(`${name} must be inside the tool dependency directory without symlinks.`);
+  }
+  const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
+  const version = packages?.[`node_modules/${name}`]?.version;
+  if (typeof version !== 'string' || !version) {
+    throw new Error(`Missing ${name} version in the browser verification lockfile.`);
+  }
+  if (metadata.name !== name) throw new Error(`Invalid package metadata for ${name}.`);
+  if (metadata.version !== version) {
+    throw new Error(`${name} version ${metadata.version} does not match the lockfile version ${version}.`);
+  }
+  const entry = require.resolve(packageRoot);
+  const relative = path.relative(packageRoot, entry);
+  if (path.isAbsolute(relative) || relative === '..' || relative.startsWith('..' + path.sep)
+      || fs.realpathSync(entry) !== entry) {
+    throw new Error(`${name} must be inside the tool dependency directory. Resolved to ${entry}.`);
+  }
+  return entry;
+}
+
+function loadPlaywright(override) {
+  if (override) {
+    return require(override.startsWith('./') || override.startsWith('../') ? path.resolve(override) : override);
+  }
+  const dependencyRoot = path.join(__dirname, '..', dependencyDirectory);
+  try {
+    const lockfile = JSON.parse(fs.readFileSync(path.join(dependencyRoot, 'package-lock.json'), 'utf8'));
+    const playwright = lockedModuleEntry(dependencyRoot, lockfile.packages, 'playwright');
+    const core = lockedModuleEntry(dependencyRoot, lockfile.packages, 'playwright-core');
+    const resolvedCore = createRequire(playwright).resolve('playwright-core');
+    if (resolvedCore !== core) {
+      throw new Error(`playwright-core must be inside the tool dependency directory at ${core}. Resolved to ${resolvedCore}.`);
     }
-    throw new Error('Install Playwright on the verifier, or set RTL_PLAYWRIGHT_MODULE.');
+    return require(playwright);
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    throw new Error(`${detail}\nRun ${installDependencies} from the 07-RTL root, or set RTL_PLAYWRIGHT_MODULE.`, { cause: error });
   }
 }
 
@@ -232,10 +263,20 @@ async function main() {
       rootFeaturePlans.set(url.href, features);
     }
   }
-  const playwright = loadPlaywright();
+  const override = process.env.RTL_PLAYWRIGHT_MODULE;
+  const playwright = loadPlaywright(override);
   const options = { headless: true };
   if (process.env.RTL_BROWSER_EXECUTABLE) options.executablePath = process.env.RTL_BROWSER_EXECUTABLE;
-  const browser = await playwright[engine].launch(options);
+  let browser;
+  try {
+    browser = await playwright[engine].launch(options);
+  } catch (error) {
+    if (!override && !options.executablePath && error instanceof Error && error.message.includes("Executable doesn't exist at")) {
+      const detail = error.message.split('\n', 1)[0];
+      throw new Error(`${detail}\nRun ./tools/browser-verification/node_modules/.bin/playwright install ${engine} from the 07-RTL root, or set RTL_BROWSER_EXECUTABLE to a local browser executable.`, { cause: error });
+    }
+    throw error;
+  }
   const report = {
     protocol: 'file:', path: source, entry: entry.href, fixture_revision: fixture,
     suite_revision: suiteRevision, browser: engine + ' ' + browser.version(), cases: {},

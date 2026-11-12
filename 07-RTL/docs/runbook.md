@@ -164,7 +164,7 @@ Integration 管理路由、共享组件和依赖锁文件。各场景任务授�
 
 1. **构建自测源码。** 场景完成 Git 提交后，运行 `build RUN --attempt ATTEMPT --epoch EPOCH`，在返回的 `entry` 上执行浏览器用例。报告登记为 `self`，目标填写源码提交。
 2. **构建待合入源码。** 执行 `stage` 后，用 `build RUN --operation MERGE_OP --epoch EPOCH` 构建这一份暂存源码。独立验证使用返回的 `entry`，按相应任务登记 `integration` 和 `contract` 证据，再提升候选。初始底座可以直接用 `build RUN --epoch EPOCH` 检查。
-3. **核对构建身份。** 每个新提交都导出到独立目录执行 `npm run build`。依赖由 `npm ci` 安装或从已安装快照复制。产物登记源码提交、锁文件摘要和成品文件清单。工作区只存源码，保持 Git 状态干净。源代码或父版本变化时生成对应的新构建。
+3. **核对构建身份。** 每个新提交都导出到独立目录执行 `npm run build`。依赖由 `npm ci` 安装或从已安装快照复制。安装和构建都会清除继承的 `NODE_PATH`，项目依赖通过锁文件登记。产物登记源码提交、锁文件摘要和成品文件清单。工作区只存源码，保持 Git 状态干净。源代码或父版本变化时生成对应的新构建。
 4. **落盘复验与接手。** `land` 使用已登记的构建成品，独立验证从正式路径直接打开 `index.html`。通过后 `finalize` 的 `source` 字段指向该提交的源码交接目录，包含启动说明与锁文件。Coding Agent 将该目录复制到自己的工作区开发，交付回执关联原源码和已验成品。
 5. **续跑。** 缺少构建时，用当前有效尝试或合入操作的原编号补构建。发现产物与清单不一致时保留现场并排查。下一轮可从上次交付的源码重新起步。切换台账时，`--from-run OLD_RUN` 可按项目的已验收历史查找原运行、源码和回执。未指定继承来源且项目未提供 `prototype-src/` 时，沿用最新的已核验 React 交付。保留原运行台账、Git 仓库和源码交接目录。同台账自动继承早期 React 交付时，RTL 也保留继承候选和原作者来源。
 
@@ -191,13 +191,29 @@ S4 完成后，由 Master 在交付说明中引用既有 `finalize` 回执并附
 
 ## 浏览器验证、合入和交付
 
+浏览器验证默认从 `tools/browser-verification` 加载锁定的 Playwright `1.61.0-alpha-1781023400000`。在 RTL 工具根目录运行安装命令。
+
+```sh
+npm ci --prefix tools/browser-verification --ignore-scripts
+```
+
+默认使用 Chromium。已有本机浏览器时，可用 `RTL_BROWSER_EXECUTABLE` 指定其可执行文件。需要由 Playwright 管理 Chromium 时，单独运行以下命令安装浏览器。
+
+```sh
+./tools/browser-verification/node_modules/.bin/playwright install chromium
+```
+
+默认执行前核对本地 `playwright` 和 `playwright-core` 的版本及加载位置。依赖缺失、安装不完整或版本与锁文件不符时，按提示执行上面的 `npm ci`。缺少锁定驱动对应的浏览器时，用工具目录下的 Playwright 命令安装所需引擎，或配置本机浏览器。
+
+可用 `RTL_PLAYWRIGHT_MODULE` 显式指定另一份已安装的 Playwright。支持绝对路径和 Node 可解析的模块名，以 `./` 或 `../` 开头的路径相对于调用命令的当前目录。显式覆盖所需的浏览器由该驱动的配置决定。
+
 浏览器验证命令不访问台账。准备独立的用例 JSON 和一个尚未使用的报告路径，两者放在原型目录之外：
 
 ```sh
 python3 -m loop browser /absolute/path/index.html /absolute/path/suite.json /absolute/path/report.json
 ```
 
-默认用 Chromium。Node 能直接加载 Playwright 时使用它，否则尝试从本机 `playwright-cli` 解析模块。也可设置 `RTL_PLAYWRIGHT_MODULE` 为已安装模块路径，或用 `RTL_BROWSER_EXECUTABLE` 指定本机浏览器。验证脚本从 `file://` 启动、检查加载和交互、记录实际执行步骤及浏览器版本。支持 `click`、`fill`、`select`、`reload` 和 `text`、`visible`、`value`、`disabled` 等断言。每项用例使用新的浏览器上下文。设计规范可用 `css` 断言核对实际渲染的字号、尺寸和颜色，提供 `property` 与预期 `value`。像素长度允许 0.1px 的浏览器舍入差异，其他值按原值比较。
+验证脚本从 `file://` 启动、检查加载和交互、记录实际执行步骤及浏览器版本。支持 `click`、`fill`、`select`、`reload` 和 `text`、`visible`、`value`、`disabled` 等断言。每项用例使用新的浏览器上下文。设计规范可用 `css` 断言核对实际渲染的字号、尺寸和颜色，提供 `property` 与预期 `value`。像素长度允许 0.1px 的浏览器舍入差异，其他值按原值比较。
 
 ```json
 {
@@ -216,10 +232,10 @@ python3 -m loop browser /absolute/path/index.html /absolute/path/suite.json /abs
 ```
 
 1. **场景自测。** 场景 Agent 调用 [scene-delivery](../skills/scene-delivery/SKILL.md#自审自测和入账)，为尝试工作区的实际提交生成报告。用 `evidence RUN self SHA --actor WORKER --context CONTEXT --report REPORT --epoch EPOCH` 入账，上下文 JSON 含 `attempt_id`。原始 `--report` 的同一份字节用于解析、摘要和归档，冲突的报告上下文字段会阻断入账。
-2. **暂存。** Integration 先用 `skill prototype-integration --role integration --stage S3 --run RUN --epoch EPOCH` 加载当前指引。专项用途由 [主控专项调用](../skills/loop-control/SKILL.md#专项调用) 选择。`stage RUN ATTEMPT [ATTEMPT...] --epoch EPOCH` 生成父版本、待合入提交、验证路径与操作编号。React 先构建该暂存提交，再对返回的 `entry` 跑必需检查。静态模式直接验证暂存入口。证据类型 `integration` 需要 `operation_id`。受共享改动影响的额外用例和契约分别用 `--require-case CASE`、`--require-edge EDGE` 登记到本次暂存，可重复传入。共享接口另登记 `contract`，上下文增加 `edge`、`version`，以及 `provider` 和 `consumer` 各自的 `task`、`commit`。符合 [主控联验证据要求](../skills/loop-control/SKILL.md#暂存联验与提升) 后，`promote RUN OPERATION --epoch EPOCH` 核对当前候选和各项证据。属于当前用例和范围的独立验证失败会阻止提升，包括低风险任务和额外用例。契约失败与通过使用同一套冻结锚点筛选，再按实际契约和候选归属。重做暂存或回派时，按适用的失败用例和原验证条件重新取证。
+2. **暂存。** Integration 先用 `skill prototype-integration --role integration --stage S3 --run RUN --epoch EPOCH` 加载当前指引。专项用途由 [主控专项调用](../skills/loop-control/SKILL.md#专项调用) 选择。`stage RUN ATTEMPT [ATTEMPT...] --epoch EPOCH` 生成父版本、待合入提交、验证路径与操作编号。React 先构建该暂存提交，再对返回的 `entry` 跑必需检查。静态模式直接验证暂存入口。证据类型 `integration` 需要 `operation_id`。受共享改动影响的额外用例和契约分别用 `--require-case CASE`、`--require-edge EDGE` 登记到本次暂存，可重复传入。共享接口另登记 `contract`，上下文增加 `edge`、`version`，以及 `provider` 和 `consumer` 各自的 `task`、`commit`。符合 [主控联验证据要求](../skills/loop-control/SKILL.md#暂存联验与提升) 后，`promote RUN OPERATION --epoch EPOCH` 核对当前候选和各项证据。高风险及复验任务的通过证据须来自覆盖该任务已冻结断言时点的套件。属于当前用例和范围的独立验证失败会阻止提升，包括低风险任务和额外用例。契约失败与通过使用同一套冻结锚点筛选，再按实际契约和候选归属。重做暂存或回派时，按适用的失败用例和原验证条件重新取证。
 3. **功能地图。** 项目的 `docs/feature-map.md` 用下列表头登记功能、实际入口、契约和必跑用例。用例或契约多个时以逗号分隔。React 用实际成品路由，例如 `index.html#/guide`。用 `map-check RUN` 预检，落盘前也会检查。这个预检核对文件和编号。路由、入口、业务步骤或验证数据变化时，再按 [功能地图实走与故障归因](../skills/prototype-verification/SKILL.md#功能地图实走与故障归因) 对照实际页面和冻结预期。
 4. **实际落盘。** `land RUN --epoch EPOCH` 放入完整候选，返回实际入口和交付操作编号，此时为待验。已获准替换且现有内容与已登记的上轮交付、被替代轮次保留的落盘清单或静态导入基础一致时，使用 `--allow-replace`，工具保留原目录。更换台账后，同一路径的旧交付须与原台账已验收的清单完全一致。其他既有内容需要先确认独立落盘路径。
-5. **独立验收。** 非作者 Verifier 用 `skill prototype-verification --role verifier --stage S4 --run RUN --epoch EPOCH` 取得 [验证指引](../skills/prototype-verification/SKILL.md) 和适用参考。新轮从返回的实际 `index.html` 运行 `browser ENTRY SUITE REPORT --feature-map PROJECT/docs/feature-map.md --feature-entries`。报告记录实际入口、可见功能标记和用例各步的 URL。将冻结断言的关键步骤安排在功能地图的登记入口，跨页面用例分别在对应功能入口执行。页面可用 `<h1 data-rtl-scene="SCN-C" data-rtl-feature="FUNC-C01">布局偏好</h1>` 声明场景及功能，同一元素可用空格列出多个功能编号。普通文档应呈现可见内容，原生锚点须命中可见元素。哈希路由须有匹配的当前导航和可见页面标题，或在对应页面上用可见的 `data-rtl-route="/route"` 标识。每个登记的浏览器分别通过必跑用例、功能标记和实际入口的业务执行校验。适用的补充用例在同一浏览器上已报失败时，按原定义复验通过。地图、成品或适用用例变化时重新取证。用 `evidence RUN delivery SHA --actor VERIFIER --context CONTEXT --report REPORT --epoch EPOCH` 记录报告，上下文含交付 `operation_id`。Master 执行 `finalize RUN OPERATION --actor MASTER --epoch EPOCH`，按需提供 `--approval REFERENCE`。台账、交付清单和项目变更记忆指向同一候选。最新轮次的生成台账、CHG 或冻结快照丢失时，可重试原 `finalize` 恢复。
+5. **独立验收。** 非作者 Verifier 用 `skill prototype-verification --role verifier --stage S4 --run RUN --epoch EPOCH` 取得 [验证指引](../skills/prototype-verification/SKILL.md) 和适用参考。新轮从返回的实际 `index.html` 运行 `browser ENTRY SUITE REPORT --feature-map PROJECT/docs/feature-map.md --feature-entries`。报告记录实际入口、可见功能标记和用例各步的 URL。将冻结断言的关键步骤安排在功能地图的登记入口，跨页面用例分别在对应功能入口执行。页面可用 `<h1 data-rtl-scene="SCN-C" data-rtl-feature="FUNC-C01">布局偏好</h1>` 声明场景及功能，同一元素可用空格列出多个功能编号。普通文档应呈现可见内容，原生锚点须命中可见元素。哈希路由须有匹配的当前导航和可见页面标题，或在对应页面上用可见的 `data-rtl-route="/route"` 标识。每个登记的浏览器分别通过必跑用例、功能标记和实际入口的业务执行校验。适用的补充用例在同一浏览器上已报失败时，按原定义复验通过。地图、成品或适用用例变化时重新取证。用 `evidence RUN delivery SHA --actor VERIFIER --context CONTEXT --report REPORT --epoch EPOCH` 记录报告，上下文含交付 `operation_id`。Master 执行 `finalize RUN OPERATION --actor MASTER --epoch EPOCH`，按需提供 `--approval REFERENCE`。要求人工验收时须提供实际确认依据，待确认等占位值会被拦截。台账、交付清单和项目变更记忆指向同一候选。最新轮次的生成台账、CHG 或冻结快照丢失时，可重试原 `finalize` 恢复。
 6. **中断。** 接管后对照 `status` 和实际产物。对原合入操作重试 `promote`，对待验目录重试 `land`，对验收后缺回执的目录重试 `finalize`。替换落盘目录中断且入口仍缺失时，先恢复原 `land` 再推进新候选。Git 已前移、合入回执未登记且候选需返修时，用 `rollback-integration RUN OPERATION --reason REASON --epoch EPOCH` 恢复已登记的父版本，保留原失败证据，再回派任务。合入待恢复时，冻结文件丢失可先执行 `prepare RUN --epoch EPOCH`。原自测报告丢失时，由场景执行者在同一尝试、提交和冻结用例上重新取证，再重试原合入。原报告丢失时，用同一候选和冻结用例重新取证，恢复原验收决定并同步回执与记忆的证据引用。验收重试可省略 `--approval` 或提供原依据。依据变化按 [主控验收流程](../skills/loop-control/SKILL.md#s4--决定交付) 处理。若必须撤销已登记且尚未回写的验收意图，执行 `cancel-acceptance RUN DELIVERY_OP --epoch EPOCH --reason REASON`。已部分回写的验收按原意图恢复。换了父版本或候选就重新暂存或验证。
 
 | 功能 | 场景 | 入口 | 契约 | 必跑用例 |

@@ -79,6 +79,32 @@ def _read_suite(path: Path, raw: bytes, baseline: Baseline, declared_cases: list
     return {"engine": engine, "cases": cases}
 
 
+def integration_case_suites(baseline: Baseline, risky_tasks) -> dict[str, set[str]] | None:
+    """Find frozen suites that cover the checkpoint obligations of the staged risk tasks."""
+    catalog = baseline.get("suite_catalog")
+    plan = baseline.get("requirements")
+    if catalog is None or plan is None:
+        return None
+
+    features = current_work_features(plan)
+    obligations = {}
+    for task in risky_tasks:
+        cases = set(task["cases"])
+        for feature_id in task["feature_ids"]:
+            for binding in features[feature_id].get("assertions", ()):
+                if binding["case"] in cases and "checkpoint" in binding:
+                    obligations.setdefault(binding["case"], []).append(binding)
+    if not obligations:
+        return None
+    return {
+        case: {
+            digest for digest, suite in catalog.items()
+            if case in suite["cases"] and all(matches_checkpoint(binding, suite["cases"][case]) for binding in bindings)
+        }
+        for case, bindings in obligations.items()
+    }
+
+
 def _require_coverage(baseline: Baseline, catalog: dict[str, FrozenSuite]) -> None:
     obligations = {}
     for feature in current_work_features(baseline["requirements"]).values():

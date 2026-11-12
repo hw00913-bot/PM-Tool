@@ -41,13 +41,14 @@ class NextDeliveryEvidenceTests(unittest.TestCase):
             ],
         })
 
-    def _run(self, *suites):
+    def _run(self, *suites, **baseline_options):
         self.store.create_run(self.project, self.output, {
             "revision": "R1", "mandatory_cases": ["TC-A"], **REVISIONS,
             "suite_digests": {
                 hashlib.sha256(suite.encode()).hexdigest(): [case["id"] for case in json.loads(suite)["cases"]]
                 for suite in suites
             },
+            **baseline_options,
         }, project_id="P", run_id="R")
         artifacts.initialize_repo(self.store, "R", 1)
 
@@ -101,6 +102,20 @@ class NextDeliveryEvidenceTests(unittest.TestCase):
         resume = next(action for action in actions if action["kind"] == "s4_acceptance_resume")
         self.assertEqual(resume["argv"][5:], ["finalize", "R", operation, "--actor", "master", "--epoch", "1"])
         self.assertEqual(delivery.finalize(self.store, "R", 1, operation, "master")["approval"], "approved")
+
+    def test_pending_approval_placeholder_offers_cancellation_instead_of_finalization(self):
+        suite = self._suite("TC-A")
+        self._run(suite, human_acceptance=True)
+        landed = delivery.land(self.store, "R", 1)
+        self._report(landed, suite, {"TC-A": "pass"}, "pass.json")
+        operation = landed["operation_id"]
+        with patch.object(delivery, "_require_human_approval"):
+            intent = delivery._acceptance_intent(self.store, "R", 1, operation, "master", "待确认")
+        actions = self._status()["next_actions"]
+        resume = next(action for action in actions if action["kind"] == "s4_acceptance_resume")
+        self.assertEqual(resume["acceptance_id"], intent["id"])
+        self.assertNotIn("argv", resume)
+        self.assertTrue(any("cancel-acceptance" in check for check in resume["checks"]))
 
     def test_legacy_equivalent_retest_uses_archived_case_fingerprint_after_takeover(self):
         first, second = self._suite("TC-A"), self._suite("TC-A", "TC-B")

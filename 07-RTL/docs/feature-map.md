@@ -7,7 +7,7 @@
 | 项目识别、请求分流、路径确认与阶段调度 | [loop-control](../skills/loop-control/SKILL.md) · [只读下一步引导](runbook.md#启动与续跑) | `loop/__main__.py`、`loop/next_actions.py`、`loop/state.py`、`loop/reservations.py` | 同一台账快照的运行编号、代次和恢复命令，F12 跨台账唯一活动写入者、大小写路径别名 |
 | 整轮暂停、主控接管、旧轮替代与回执补记 | [loop-recovery](../skills/loop-recovery/SKILL.md#整轮暂停与续跑) | `loop/lifecycle.py`、`loop/dispatch.py`、`loop/artifacts.py`、`loop/delivery.py` | F1 派发和跨会话停工恢复、F3 提升、F11 落盘或登记中断 |
 | 台账版本和历史记录读取 | [现行依据与历史记录](runbook.md#现行依据与历史记录) | `loop/ledger_schema.py`、`loop/payload_types.py`、`loop/state.py` | 只读查询保持旧台账字节一致，写入前原子升级，沿用原编号续跑和验收 |
-| 并行调度与恢复规则的模型检查 | [statechart](../skills/statechart/SKILL.md) | 本地 Pstack 执行器、隔离模型及真实 CLI 复现记录 | 派发重试、停工证明、契约改版、提升及落盘回退的事件顺序 |
+| 并行调度与恢复规则的模型检查 | [statechart](../skills/statechart/SKILL.md) | [内置 Statechart 执行器](../tools/statechart/README.md)、隔离模型及真实 CLI 复现记录 | 派发重试、停工证明、契约改版、提升及落盘回退的事件顺序 |
 | 需求契约、四步交接与功能变更追溯 | [requirement-architecture](../skills/requirement-architecture/SKILL.md) | `loop/requirements.py`、`loop/requirements_run.py`、`loop/requirements_history.py`、项目 `docs/需求台账.md` | F7 契约冻结与派发校验、F8 功能及用例断链、S4 变更回链 |
 | 04 冻结包接续 S1 | [导入与验收映射](runbook.md#从-04-冻结包接续-s1) | `loop/upstream_analysis.py`、`loop/analysis_mapping.py`、`loop/s1_review.py` | 上游批准有效性、原编号与断言时点、撤销后阻断初始化和执行 |
 | 场景工作区、设计、实现和提交交接 | [scene-delivery](../skills/scene-delivery/SKILL.md) | `loop/dispatch.py`、`loop/artifacts.py` | F1 有效尝试唯一、F13 依赖等待不占住执行位、设计结果随实现派发 |
