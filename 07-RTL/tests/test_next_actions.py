@@ -11,6 +11,12 @@ from unittest.mock import patch
 from loop import artifacts, codex_host, contracts, delivery, dispatch, lifecycle, verification
 from loop.state import Store, begin_operation, finish_operation
 
+if __package__:
+    from . import test_codex_host, test_p1_contracts
+else:
+    import test_codex_host
+    import test_p1_contracts
+
 
 PROJECT = Path(__file__).resolve().parents[1]
 
@@ -126,11 +132,9 @@ class NextActionsTests(unittest.TestCase):
         self.assertFalse(any("--stopped" in action.get("argv", []) for action in matching))
 
     def test_takeover_points_to_the_original_running_codex_turn(self):
-        from test_codex_host import FakeAppServer
-
         self.task("A")
         attempt = self.reserve("A")
-        host = FakeAppServer()
+        host = test_codex_host.FakeAppServer()
         with patch.object(codex_host, "CodexClient", host):
             started = codex_host.start(self.store, "R", 1, attempt["id"])
             epoch = self.store.take_over("R", 1)["epoch"]
@@ -189,9 +193,7 @@ class NextActionsTests(unittest.TestCase):
         self.assertFalse(any(row.get("task_id") == "C" or row.get("attempt_id") == independent["id"] for row in affected))
 
     def test_old_landing_does_not_hide_contract_redispatch(self):
-        from test_p1_contracts import ContractIntegrationTests
-
-        fixture = ContractIntegrationTests()
+        fixture = test_p1_contracts.ContractIntegrationTests()
         self.addCleanup(fixture.doCleanups)
         fixture.setUp()
         fixture.integrate_v1()
