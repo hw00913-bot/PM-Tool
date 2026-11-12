@@ -1,0 +1,105 @@
+{
+  "skills": [
+    {
+      "id": "loop-control",
+      "path": "loop-control/SKILL.md",
+      "roles": ["master"],
+      "stages": ["S0", "S1", "S2", "S3", "S4"],
+      "references": [
+        {"ref": "pstack-workflows#playbooks", "stages": ["S0"]},
+        {"ref": "requirements-workflows#check-traceability", "stages": ["S1"]},
+        {"ref": "pstack-workflows#orchestrate", "stages": ["S2", "S3"]},
+        {"ref": "superpowers-workflows#implementer-brief", "stages": ["S2"]},
+        {"ref": "superpowers-workflows#implementer-brief", "stages": ["S3"], "purposes": ["dispatch"]},
+        {"ref": "pstack-workflows#session-pickup", "stages": ["S4"], "purposes": ["delivery-handoff"]},
+        {"ref": "pstack-workflows#correct", "stages": ["S2", "S3", "S4"], "purposes": ["repeat-defect"]}
+      ]
+    },
+    {
+      "id": "loop-recovery",
+      "path": "loop-recovery/SKILL.md",
+      "roles": ["master"],
+      "stages": ["S0", "S1", "S2", "S3", "S4"],
+      "references": [
+        {"ref": "pstack-workflows#session-pickup", "stages": ["S0", "S1", "S2", "S3", "S4"]},
+        {"ref": "superpowers-workflows#resume-from-ledger", "stages": ["S0", "S1", "S2", "S3", "S4"]},
+        {"ref": "engineering-verification#idempotent-recovery", "stages": ["S0", "S1", "S2", "S3", "S4"]},
+        {"ref": "pstack-workflows#pause-safely", "stages": ["S0", "S1", "S2", "S3", "S4"], "purposes": ["pause"]}
+      ]
+    },
+    {
+      "id": "statechart",
+      "path": "statechart/SKILL.md",
+      "roles": ["master", "integration", "verifier"],
+      "stages": ["S2", "S3", "S4"]
+    },
+    {
+      "id": "requirement-architecture",
+      "path": "requirement-architecture/SKILL.md",
+      "roles": ["architect"],
+      "stages": ["S0", "S1", "S2", "S3", "S4"],
+      "references": [
+        {"ref": "requirements-workflows#extract-requirements", "stages": ["S1"], "steps": ["analysis"]},
+        {"ref": "requirements-workflows#clarify-requirements", "stages": ["S1"], "steps": ["analysis"]},
+        {"ref": "requirements-workflows#write-testable-specs", "stages": ["S1"], "steps": ["analysis", "features"]},
+        {"ref": "requirements-workflows#slice-scenarios", "stages": ["S1"], "steps": ["scenes"]},
+        {"ref": "requirements-workflows#separate-spec-and-change", "stages": ["S1"], "steps": ["features"]},
+        {"ref": "requirements-workflows#plan-tasks", "stages": ["S1"], "steps": ["tasks"]},
+        {"ref": "requirements-workflows#check-traceability", "stages": ["S1"], "steps": ["tasks"]},
+        {"ref": "pstack-workflows#prototype", "stages": ["S0", "S1"], "purposes": ["prototype"]}
+      ]
+    },
+    {
+      "id": "scene-delivery",
+      "path": "scene-delivery/SKILL.md",
+      "roles": ["scene"],
+      "stages": ["S2", "S3"],
+      "references": [
+        {"ref": "superpowers-workflows#implementer-brief", "stages": ["S2", "S3"]},
+        {"ref": "engineering-verification#consumer-mock-and-provider-verification", "stages": ["S2", "S3"], "requires_edges": true}
+      ]
+    },
+    {
+      "id": "contract-coordination",
+      "path": "contract-coordination/SKILL.md",
+      "roles": ["scene", "master", "integration"],
+      "stages": ["S2", "S3"],
+      "references": [
+        {"ref": "engineering-verification#verified-version-pairs", "stages": ["S2", "S3"]}
+      ]
+    },
+    {
+      "id": "prototype-design-style",
+      "path": "prototype-design-style/SKILL.md",
+      "roles": ["scene", "integration", "verifier"],
+      "stages": ["S2", "S3"],
+      "references": [
+        {"ref": "engineering-verification#design-tokens-and-states", "stages": ["S2", "S3"]}
+      ]
+    },
+    {
+      "id": "prototype-integration",
+      "path": "prototype-integration/SKILL.md",
+      "roles": ["integration"],
+      "stages": ["S2", "S3"],
+      "references": [
+        {"ref": "engineering-verification#merge-queue", "stages": ["S2", "S3"]},
+        {"ref": "engineering-verification#conditional-ref-update", "stages": ["S3"]},
+        {"ref": "pstack-workflows#blast-radius", "stages": ["S2", "S3"], "purposes": ["shared-change"]}
+      ]
+    },
+    {
+      "id": "prototype-verification",
+      "path": "prototype-verification/SKILL.md",
+      "roles": ["verifier"],
+      "stages": ["S2", "S3", "S4"],
+      "references": [
+        {"ref": "superpowers-workflows#independent-review", "stages": ["S2", "S3", "S4"]},
+        {"ref": "pstack-workflows#create-verification", "stages": ["S2", "S3", "S4"]},
+        {"ref": "engineering-verification#file-url-verification", "stages": ["S2", "S3", "S4"]},
+        {"ref": "pstack-workflows#bug-fix", "stages": ["S2", "S3", "S4"], "purposes": ["defect"]},
+        {"ref": "pstack-workflows#maintain-verification", "stages": ["S3", "S4"], "purposes": ["maintenance"]}
+      ]
+    }
+  ]
+}

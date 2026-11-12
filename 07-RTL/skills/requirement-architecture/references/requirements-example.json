@@ -1,0 +1,71 @@
+{
+  "approval": "示例 · 用户确认工作台布局保存及刷新恢复",
+  "requirements": [
+    {
+      "id": "REQ-C01",
+      "name": "保留工作台布局偏好",
+      "source": "示例 · 工作台布局偏好条款 REQ-C01",
+      "goal": "用户下次刷新时沿用已保存的布局",
+      "scope": "同一浏览器的本地原型和工作台",
+      "rule": "保存布局后在同一入口刷新应恢复已保存的选项",
+      "acceptance": "从标准切为紧凑并保存，刷新后选择和预览均保持紧凑"
+    }
+  ],
+  "scenes": [
+    {
+      "id": "SCN-C",
+      "name": "工作台布局偏好",
+      "requirement_ids": ["REQ-C01"],
+      "actor": "工作台用户",
+      "trigger": "调整工作台显示密度",
+      "preconditions": "原型已打开，布局初始为标准",
+      "main_flow": ["选择紧凑布局", "保存", "刷新"],
+      "alternatives": "保存失败时留在页面并给出失败原因",
+      "outcome": "刷新后还原已保存的布局"
+    }
+  ],
+  "features": [
+    {
+      "id": "FUNC-C01",
+      "name": "保存并恢复布局",
+      "scene_id": "SCN-C",
+      "requirement_ids": ["REQ-C01"],
+      "rule": "保存布局后在同一入口刷新应恢复已保存的选项",
+      "cases": ["TC-C01"],
+      "assertions": [
+        {
+          "case": "TC-C01",
+          "step": {"op": "text", "selector": "#result", "value": "compact"},
+          "checkpoint": {
+            "index": 3,
+            "after": [
+              {"op": "fill", "selector": "#layout", "value": "compact"},
+              {"op": "click", "selector": "#save"},
+              {"op": "reload"}
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "id": "C",
+      "name": "实现布局偏好和回读",
+      "feature_ids": ["FUNC-C01"],
+      "input": "工作台入口、默认布局及已确认的保存规则",
+      "deliverable": "工作台布局控件及本地保存逻辑",
+      "done": "TC-C01 通过并附实际候选自测报告",
+      "paths": ["index.html", "layout.js"],
+      "cases": ["TC-C01"]
+    }
+  ],
+  "changes": [
+    {
+      "feature_id": "FUNC-C01",
+      "kind": "add",
+      "before": "",
+      "after": "支持保存布局并在刷新后恢复"
+    }
+  ]
+}
