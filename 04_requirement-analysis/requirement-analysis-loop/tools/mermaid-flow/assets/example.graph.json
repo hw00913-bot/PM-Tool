@@ -1,0 +1,316 @@
+{
+  "title": "申请处理流程（虚构示例）",
+  "page_id": "demo_page",
+  "source_url": "demo.html",
+  "start": "Start",
+  "nodes": [
+    {
+      "id": "Start",
+      "kind": "terminal",
+      "text": "开始",
+      "source_ids": [
+        "src_Start"
+      ],
+      "source_texts": [
+        "开始"
+      ],
+      "phase": "P1",
+      "x": 100,
+      "y": 100,
+      "w": 180,
+      "h": 100
+    },
+    {
+      "id": "Receive",
+      "kind": "process",
+      "text": "接收申请\n保留原始字段与提交时间",
+      "source_ids": [
+        "src_Receive"
+      ],
+      "source_texts": [
+        "接收申请\n保留原始字段与提交时间"
+      ],
+      "phase": "P1",
+      "x": 350,
+      "y": 100,
+      "w": 180,
+      "h": 100
+    },
+    {
+      "id": "Valid",
+      "kind": "decision",
+      "text": "必填信息完整且数量 < 5？",
+      "source_ids": [
+        "src_Valid"
+      ],
+      "source_texts": [
+        "必填信息完整且数量 < 5？"
+      ],
+      "phase": "P1",
+      "x": 600,
+      "y": 100,
+      "w": 180,
+      "h": 100
+    },
+    {
+      "id": "Retry",
+      "kind": "process",
+      "text": "提示补全信息\n申请人修改后重新提交",
+      "source_ids": [
+        "src_Retry"
+      ],
+      "source_texts": [
+        "提示补全信息\n申请人修改后重新提交"
+      ],
+      "phase": "P1",
+      "x": 100,
+      "y": 280,
+      "w": 180,
+      "h": 100
+    },
+    {
+      "id": "Store",
+      "kind": "database",
+      "text": "保存申请记录",
+      "source_ids": [
+        "src_Store"
+      ],
+      "source_texts": [
+        "保存申请记录"
+      ],
+      "phase": "P2",
+      "x": 350,
+      "y": 280,
+      "w": 180,
+      "h": 100
+    },
+    {
+      "id": "Send",
+      "kind": "subprocess",
+      "text": "发送处理请求",
+      "source_ids": [
+        "src_Send"
+      ],
+      "source_texts": [
+        "发送处理请求"
+      ],
+      "phase": "P2",
+      "x": 600,
+      "y": 280,
+      "w": 180,
+      "h": 100
+    },
+    {
+      "id": "Finish",
+      "kind": "terminal",
+      "text": "结束",
+      "source_ids": [
+        "src_Finish"
+      ],
+      "source_texts": [
+        "结束"
+      ],
+      "phase": "P2",
+      "x": 100,
+      "y": 460,
+      "w": 180,
+      "h": 100
+    },
+    {
+      "id": "Reference",
+      "kind": "reference",
+      "text": "定位到保存申请记录",
+      "source_ids": [
+        "src_Reference"
+      ],
+      "source_texts": [
+        "定位到保存申请记录"
+      ],
+      "phase": "P2",
+      "x": 350,
+      "y": 460,
+      "w": 180,
+      "h": 100
+    },
+    {
+      "id": "Unknown",
+      "kind": "reference",
+      "text": "外部引用\n原型未配置跳转去向",
+      "source_ids": [
+        "src_Unknown"
+      ],
+      "source_texts": [
+        "外部引用\n原型未配置跳转去向"
+      ],
+      "phase": "P2",
+      "x": 600,
+      "y": 460,
+      "w": 180,
+      "h": 100
+    },
+    {
+      "id": "NoteValid",
+      "kind": "note",
+      "text": "校验说明\n保留“是 / 否”两条原始分支。\n缺失信息时提示补全，重新提交后再次校验。\n数量条件和重试路径都属于原始流程，不能为了压缩版面省略。",
+      "source_ids": [
+        "src_NoteValid"
+      ],
+      "source_texts": [
+        "校验说明\n保留“是 / 否”两条原始分支。\n缺失信息时提示补全，重新提交后再次校验。\n数量条件和重试路径都属于原始流程，不能为了压缩版面省略。"
+      ],
+      "phase": "P1",
+      "x": 100,
+      "y": 640,
+      "w": 180,
+      "h": 100,
+      "anchor": "Valid",
+      "note_no": "R01"
+    },
+    {
+      "id": "NoteStore",
+      "kind": "note",
+      "text": "存储说明\n同一申请的再次提交如何识别，按源图原文保留。\n这里仅演示长旁注换行与全文查看，不规定具体业务规则。\n示例符号：A & B、字段 <name>、引号 \"value\"。",
+      "source_ids": [
+        "src_NoteStore"
+      ],
+      "source_texts": [
+        "存储说明\n同一申请的再次提交如何识别，按源图原文保留。\n这里仅演示长旁注换行与全文查看，不规定具体业务规则。\n示例符号：A & B、字段 <name>、引号 \"value\"。"
+      ],
+      "phase": "P2",
+      "x": 350,
+      "y": 640,
+      "w": 180,
+      "h": 100,
+      "anchor": "Store",
+      "note_no": "R02"
+    }
+  ],
+  "edges": [
+    {
+      "id": "E1",
+      "kind": "flow",
+      "source": "Start",
+      "target": "Receive",
+      "text": "",
+      "source_ids": [
+        "line_1"
+      ],
+      "evidence": "虚构原图中端点与箭头已确定。"
+    },
+    {
+      "id": "E2",
+      "kind": "flow",
+      "source": "Receive",
+      "target": "Valid",
+      "text": "",
+      "source_ids": [
+        "line_2"
+      ],
+      "evidence": "虚构原图中端点与箭头已确定。"
+    },
+    {
+      "id": "E3",
+      "kind": "flow",
+      "source": "Valid",
+      "target": "Store",
+      "text": "是",
+      "source_ids": [
+        "line_3"
+      ],
+      "evidence": "虚构原图中端点与箭头已确定。"
+    },
+    {
+      "id": "E4",
+      "kind": "flow",
+      "source": "Valid",
+      "target": "Retry",
+      "text": "否",
+      "source_ids": [
+        "line_4"
+      ],
+      "evidence": "虚构原图中端点与箭头已确定。"
+    },
+    {
+      "id": "E5",
+      "kind": "flow",
+      "source": "Retry",
+      "target": "Receive",
+      "text": "重新提交",
+      "source_ids": [
+        "line_5"
+      ],
+      "evidence": "虚构原图中端点与箭头已确定。"
+    },
+    {
+      "id": "E6",
+      "kind": "flow",
+      "source": "Store",
+      "target": "Send",
+      "text": "",
+      "source_ids": [
+        "line_6"
+      ],
+      "evidence": "虚构原图中端点与箭头已确定。"
+    },
+    {
+      "id": "E7",
+      "kind": "flow",
+      "source": "Send",
+      "target": "Finish",
+      "text": "",
+      "source_ids": [
+        "line_7"
+      ],
+      "evidence": "虚构原图中端点与箭头已确定。"
+    },
+    {
+      "id": "A_NoteValid",
+      "kind": "annotation",
+      "source": "Valid",
+      "target": "NoteValid",
+      "text": "",
+      "evidence": "虚构旁注明确说明对应节点，虚线只用于阅读定位。"
+    },
+    {
+      "id": "A_NoteStore",
+      "kind": "annotation",
+      "source": "Store",
+      "target": "NoteStore",
+      "text": "",
+      "evidence": "虚构旁注明确说明对应节点，虚线只用于阅读定位。"
+    }
+  ],
+  "phases": [
+    {
+      "id": "P1",
+      "title": "接收与校验",
+      "entry": "Start"
+    },
+    {
+      "id": "P2",
+      "title": "保存与处理",
+      "entry": "Store"
+    }
+  ],
+  "navigation": [
+    {
+      "id": "JumpKnown",
+      "source": "Reference",
+      "target": "Store",
+      "evidence": "虚构原型的 scrollToWidget 指向保存节点。"
+    },
+    {
+      "id": "JumpUnknown",
+      "source": "Unknown",
+      "target": null,
+      "evidence": "虚构原型的 objectPath 为空。"
+    }
+  ],
+  "issues": [],
+  "exclusions": [],
+  "revision_notes": [
+    {
+      "text": "本示例完全虚构，用于验证技能包，不含真实原型业务内容。"
+    }
+  ]
+}

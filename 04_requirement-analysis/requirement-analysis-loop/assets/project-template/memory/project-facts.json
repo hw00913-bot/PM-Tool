@@ -1,0 +1,11 @@
+{
+  "schema_version": "1.0",
+  "project": {},
+  "actors": [],
+  "systems": [],
+  "scope": {
+    "in": [],
+    "out": []
+  },
+  "assumptions": []
+}

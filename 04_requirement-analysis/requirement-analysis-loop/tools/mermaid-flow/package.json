@@ -1,0 +1,14 @@
+{
+  "name": "requirement-analysis-mermaid-candidate",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {"node": ">=20"},
+  "scripts": {"test": "node --test tests/*.test.mjs"},
+  "dependencies": {
+    "mermaid": "11.17.2",
+    "@mermaid-js/layout-elk": "0.1.9",
+    "esbuild": "0.28.2",
+    "playwright": "1.62.1"
+  }
+}

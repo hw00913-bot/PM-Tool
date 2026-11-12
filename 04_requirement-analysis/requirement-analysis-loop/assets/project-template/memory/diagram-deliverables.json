@@ -1,0 +1,5 @@
+{
+  "contract": "optional-analysis-diagrams@1",
+  "requested": {"business_flow": false, "interaction_sequence": false},
+  "requests": []
+}

@@ -1,0 +1,7 @@
+interface:
+  display_name: "需求分析 Loop"
+  short_description: "生成含功能清单、HTML 图集和校验交接契约的冻结原型输入包"
+  default_prompt: "使用 $requirement-analysis-loop 分析这批用户故事，在 G3 确认后生成可由原型 Loop 验真导入的冻结需求基线。"
+
+policy:
+  allow_implicit_invocation: true
